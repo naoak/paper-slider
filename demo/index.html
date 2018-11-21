@@ -38,6 +38,27 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     document.body.appendChild(template.content);
   </script>
   <div class="vertical-section-container centered">
+    <h3>Custom pins</h3>
+    <demo-snippet>
+      <template>
+        <style is="custom-style">
+          #squarePin {
+            --paper-slider-square-pin-width: 100px;
+            --paper-slider-square-pin-offset-y: -6px;
+          }
+        </style>
+        <div>Square pin</div><br>
+        <paper-slider id="squarePin" no-ring square-pin value="20"></paper-slider>
+
+        <script>
+          document.addEventListener('WebComponentsReady', () => {
+            document.querySelector('#squarePin')
+              .setSquarePinTextFn(iv => `${iv+1} dogs`);
+          });
+        </script>
+      </template>
+    </demo-snippet>
+
     <h3>paper-sliders can have values, secondary progress values, or be disabled.</h3>
     <demo-snippet>
       <template>

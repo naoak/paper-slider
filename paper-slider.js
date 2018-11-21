@@ -109,7 +109,7 @@ const template = html`
       transition: none;
     }
 
-    .ring.expand:not(.pin) > .bar-container {
+    .ring.expand:not(.pin):not(.square-pin) > .bar-container {
       left: calc(8px + var(--calculated-paper-slider-height)/2);
     }
 
@@ -190,7 +190,7 @@ const template = html`
       transition-timing-function: ease;
     }
 
-    .expand:not(.pin) > .slider-knob > .slider-knob-inner {
+    .expand:not(.pin):not(.square-pin) > .slider-knob > .slider-knob-inner {
       -webkit-transform: scale(1.5);
       transform: scale(1.5);
     }
@@ -254,6 +254,47 @@ const template = html`
       transform: scale(1) translate(0, -17px);
     }
 
+    /* Square Pin SQUARE */
+    .square-pin > .slider-knob > .slider-knob-inner::before {
+      content: attr(square-pin-text);
+      position: absolute;
+      top: 0;
+      left: 50%;
+      margin-left: calc(var(--paper-slider-square-pin-internal-margin-left-offset, 0px) -  var(--paper-slider-square-pin-width, 8em)/2);
+      width: var(--paper-slider-square-pin-width, 8em);
+      height: 32px;
+      line-height: 32px;
+      text-align: center;
+      vertical-align: middle;
+      color: var(--paper-slider-font-color, #fff);
+      font-size: 12px;
+      box-shadow: 0px 2px 2px rgba(0, 0, 0, .35);
+      transform: scale(0) translate(0);
+    }
+    .square-pin.expand > .slider-knob > .slider-knob-inner::before {
+      transform: scale(1) translate(0, calc(-32px + (var(--paper-slider-square-pin-offset-y, 0px))));
+    }
+
+    /* Square Pin TRIANGLE */
+    .square-pin > .slider-knob > .slider-knob-inner::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 0;
+      height: 0;
+      margin-left: -10px;
+      background: transparent;
+      border-top: 10px solid var(--paper-slider-knob-color, var(--google-blue-700));
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.35));
+      transform: scale(0) translate(0);
+    }
+    .square-pin.expand > .slider-knob > .slider-knob-inner::after {
+      transform: scale(1) translate(0, var(--paper-slider-square-pin-offset-y, 0px));
+    }
+
     /* paper-input */
     .slider-input {
       width: 50px;
@@ -287,7 +328,7 @@ const template = html`
     }
   </style>
 
-  <div id="sliderContainer" class$="[[_getClassNames(disabled, pin, snaps, immediateValue, min, expand, dragging, transiting, editable)]]">
+  <div id="sliderContainer" class$="[[_getClassNames(disabled, pin, squarePin, snaps, immediateValue, min, expand, dragging, transiting, editable)]]">
     <div class="bar-container">
       <paper-progress disabled$="[[disabled]]" id="sliderBar" aria-hidden="true" min="[[min]]" max="[[max]]" step="[[step]]" value="[[immediateValue]]" secondary-progress="[[secondaryProgress]]" on-down="_bardown" on-up="_resetKnob" on-track="_bartrack" on-tap="_barclick">
       </paper-progress>
@@ -302,7 +343,7 @@ const template = html`
     </template>
 
     <div id="sliderKnob" class="slider-knob" on-down="_knobdown" on-up="_resetKnob" on-track="_onTrack" on-transitionend="_knobTransitionEnd">
-        <div class="slider-knob-inner" value$="[[immediateValue]]"></div>
+        <div class="slider-knob-inner" value$="[[immediateValue]]" square-pin-text$="[[squarePinText]]"></div>
     </div>
   </div>
 
@@ -355,6 +396,8 @@ Custom property | Description | Default
 `--paper-slider-height` | Height of the progress bar | `2px`
 `--paper-slider-input` | Mixin applied to the input in editable mode | `{}`
 `--paper-slider-input-container-input` | Mixin applied to the paper-input-container-input in editable mode | `{}`
+`--paper-slider-square-pin-width` | The width of the square pin (em or px only) | 8em
+`--paper-slider-square-pin-offset-y` | The y-axis offset of the square pin | 0px
 
 @group Paper Elements
 @element paper-slider
@@ -397,6 +440,20 @@ Polymer({
       type: Boolean,
       value: false,
       notify: true,
+    },
+
+    squarePin: {
+      type: Boolean,
+      value: false
+    },
+
+    squarePinText: {
+      type: String
+    },
+
+    noRing: {
+      type: Boolean,
+      value: false
     },
 
     /**
@@ -477,7 +534,7 @@ Polymer({
       value: function() {
         return [];
       },
-    },
+    }
   },
 
   observers: [
@@ -522,6 +579,17 @@ Polymer({
     this.value = this._clampValue(this.value - this.step);
   },
 
+  /**
+   * @method setSquarePinTextFn
+   * @param {Function} fn - Function to convert immediateValue to squarePinText
+   */
+  setSquarePinTextFn: function(fn) {
+    this._squarePinTextFn = fn;
+    if (fn) {
+      this.squarePinText = fn(this.immediateValue);
+    }
+  },
+
   _updateKnob: function(value, min, max, snaps, step) {
     this.setAttribute('aria-valuemin', min);
     this.setAttribute('aria-valuemax', max);
@@ -539,6 +607,9 @@ Polymer({
       this.fire('immediate-value-change', {composed: true});
     } else {
       this.value = this.immediateValue;
+    }
+    if (this._squarePinTextFn) {
+      this.squarePinText = this._squarePinTextFn(this.immediateValue);
     }
   },
 
@@ -563,6 +634,9 @@ Polymer({
     if (this.dragging) {
       this._knobstartx = (this.ratio * this._w) / 100;
       this.translate3d(0, 0, 0, this.$.sliderKnob);
+      if (this.squarePin) {
+        this._updateSquarePinMarginLeftOffset(0);
+      }
     }
   },
 
@@ -615,6 +689,35 @@ Polymer({
     var translateX =
         ((this._calcRatio(this.immediateValue) * this._w) - this._knobstartx);
     this.translate3d(translateX + 'px', 0, 0, this.$.sliderKnob);
+
+    if (this.squarePin) {
+      this._updateSquarePinMarginLeftOffset(translateX);
+    }
+  },
+
+  _updateSquarePinMarginLeftOffset: function(translateX) {
+    const LEFT_OFFSET_PROP = '--paper-slider-square-pin-internal-margin-left-offset';
+    const W = parseFloat(document.defaultView.getComputedStyle(this.$.sliderContainer).getPropertyValue('width').slice(0, -2));
+    const left = W * (this.ratio || 0) / 100;
+    const actualLeft = left + translateX;
+    const spw = this.getComputedStyleValue('--paper-slider-square-pin-width') || '8em';
+    const spwParts = spw.match(/(\d*\.?\d*)(.*)/);
+    const spwValue = parseFloat(spwParts[1]);
+    const spwUnit = spwParts[2];
+    const w = (spwUnit === 'em') ? spwValue * 12 : spwValue;
+    const threshold = 14;
+    let offset;
+
+    if ((offset = (w / 2) - (actualLeft + threshold)) > 0 || (offset = (W + threshold) - (actualLeft + (w / 2))) < 0) {
+      offset += 'px';
+    } else {
+      offset = '0px';
+    }
+    if (offset !== this.getComputedStyleValue(LEFT_OFFSET_PROP)) {
+      const styleObj = {};
+      styleObj[LEFT_OFFSET_PROP] = offset;
+      this.updateStyles(styleObj);
+    }
   },
 
   _trackEnd: function() {
@@ -715,8 +818,9 @@ Polymer({
     return this._mergeClasses({
       disabled: this.disabled,
       pin: this.pin,
+      'square-pin': this.squarePin,
       snaps: this.snaps,
-      ring: this.immediateValue <= this.min,
+      ring: this.noRing ? false : (this.immediateValue <= this.min),
       expand: this.expand,
       dragging: this.dragging,
       transiting: this.transiting,
